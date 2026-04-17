@@ -110,6 +110,27 @@ func listPalettes() []string {
 	return names
 }
 
+// export prints a shell printf one-liner that applies the palette without needing pal at runtime.
+// Paste the output into ~/.bashrc or ~/.zshrc.
+func export(p *Palette) {
+	var seqs []string
+	for i, c := range p.Colors {
+		if c != "" {
+			seqs = append(seqs, fmt.Sprintf("\\033]4;%d;#%s\\033\\\\", i, strings.ToUpper(c)))
+		}
+	}
+	if p.Foreground != "" {
+		seqs = append(seqs, fmt.Sprintf("\\033]10;#%s\\033\\\\", strings.ToUpper(p.Foreground)))
+	}
+	if p.Background != "" {
+		seqs = append(seqs, fmt.Sprintf("\\033]11;#%s\\033\\\\", strings.ToUpper(p.Background)))
+	}
+	if p.Cursor != "" {
+		seqs = append(seqs, fmt.Sprintf("\\033]12;#%s\\033\\\\", strings.ToUpper(p.Cursor)))
+	}
+	fmt.Printf("printf '%s'\n", strings.Join(seqs, ""))
+}
+
 // apply writes OSC escape sequences to the terminal to set the palette.
 // These work in xterm, VTE-based terminals, iTerm2, Kitty, and most modern terminals.
 func apply(p *Palette) {
@@ -169,6 +190,7 @@ func usage() {
 	fmt.Fprintf(w, "    %s%spal set %s%s<name>%s         %s🖌  apply a palette to the current terminal%s\n", bold, yellow, reset, purple, reset, gray, reset)
 	fmt.Fprintf(w, "    %s%spal preview %s%s<name>%s     %s👁  apply and show a color swatch%s\n", bold, yellow, reset, purple, reset, gray, reset)
 	fmt.Fprintf(w, "    %s%spal random%s             %s🎲 apply a random palette%s\n", bold, yellow, reset, gray, reset)
+	fmt.Fprintf(w, "    %s%spal export %s%s<name>%s      %s📄 print shell code to embed in .bashrc (no pal needed)%s\n", bold, yellow, reset, purple, reset, gray, reset)
 	fmt.Fprintf(w, "    %s%spal %s%s<name>%s            %s⚡ shorthand for \"pal set <name>\"%s\n", bold, yellow, reset, purple, reset, gray, reset)
 	fmt.Fprintln(w)
 	fmt.Fprintf(w, "  %s420 palettes embedded · paleta + kfc/dark formats%s\n", gray, reset)
@@ -216,6 +238,18 @@ func main() {
 		}
 		apply(p)
 		preview(p)
+
+	case "export", "shell", "bashrc":
+		if len(args) < 2 {
+			fmt.Fprintln(os.Stderr, "usage: pal export <name>")
+			os.Exit(1)
+		}
+		p, err := loadPalette(args[1])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		export(p)
 
 	case "random", "rand", "r":
 		names := listPalettes()
