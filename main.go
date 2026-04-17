@@ -146,17 +146,33 @@ func preview(p *Palette) {
 	)
 }
 
+const (
+	reset  = "\033[0m"
+	bold   = "\033[1m"
+	dim    = "\033[2m"
+	cyan   = "\033[36m"
+	yellow = "\033[33m"
+	green  = "\033[32m"
+	purple = "\033[35m"
+	white  = "\033[97m"
+	gray   = "\033[90m"
+)
+
 func usage() {
-	fmt.Fprintf(os.Stderr, `pal — terminal palette switcher
-
-Usage:
-  pal list                list all available palettes
-  pal set <name>          apply a palette to the current terminal
-  pal preview <name>      apply and show a color swatch
-  pal random              apply a random palette
-  pal <name>              shorthand for "pal set <name>"
-
-`)
+	w := os.Stderr
+	fmt.Fprintln(w)
+	fmt.Fprintf(w, "  %s%s🎨 pal%s%s — terminal palette switcher%s\n", bold, cyan, reset, gray, reset)
+	fmt.Fprintln(w)
+	fmt.Fprintf(w, "  %s%sUsage%s\n", bold, white, reset)
+	fmt.Fprintln(w)
+	fmt.Fprintf(w, "    %s%spal list%s               %s📋 list all available palettes%s\n", bold, yellow, reset, gray, reset)
+	fmt.Fprintf(w, "    %s%spal set %s%s<name>%s         %s🖌  apply a palette to the current terminal%s\n", bold, yellow, reset, purple, reset, gray, reset)
+	fmt.Fprintf(w, "    %s%spal preview %s%s<name>%s     %s👁  apply and show a color swatch%s\n", bold, yellow, reset, purple, reset, gray, reset)
+	fmt.Fprintf(w, "    %s%spal random%s             %s🎲 apply a random palette%s\n", bold, yellow, reset, gray, reset)
+	fmt.Fprintf(w, "    %s%spal %s%s<name>%s            %s⚡ shorthand for \"pal set <name>\"%s\n", bold, yellow, reset, purple, reset, gray, reset)
+	fmt.Fprintln(w)
+	fmt.Fprintf(w, "  %s420 palettes embedded · paleta + kfc/dark formats%s\n", gray, reset)
+	fmt.Fprintln(w)
 }
 
 func main() {
