@@ -45,9 +45,9 @@
 
 ## 📦 Install
 
-### Homebrew (coming soon)
+### Homebrew (macOS)
 ```bash
-brew install binRick/pal/pal
+brew install binRick/tap/pal
 ```
 
 ### Build from source
