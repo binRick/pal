@@ -33,12 +33,19 @@ jobs:
           for target in "${targets[@]}"; do
             GOOS="${target%/*}"
             GOARCH="${target#*/}"
+            BINARY="pal"
+            [ "$GOOS" = "windows" ] && BINARY="pal.exe"
             OUT="dist/pal-${GOOS}-${GOARCH}"
             [ "$GOOS" = "windows" ] && OUT="${OUT}.exe"
             CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build \
               -trimpath \
               -ldflags="-s -w -extldflags=-static" \
-              -o "$OUT" .
+              -o "$BINARY" .
+            # Package darwin builds as tarballs for Homebrew
+            if [ "$GOOS" = "darwin" ]; then
+              tar -czf "dist/pal-${GOOS}-${GOARCH}.tar.gz" "$BINARY"
+            fi
+            mv "$BINARY" "$OUT" 2>/dev/null || true
             echo "Built: $OUT ($(du -sh "$OUT" | cut -f1))"
           done
 
@@ -72,7 +79,6 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           rpmdev-setuptree
-          install -Dm755 pal %{_builddir}/pal 2>/dev/null || true
           mkdir -p ~/rpmbuild/SOURCES ~/rpmbuild/BUILD
 
           cat > ~/rpmbuild/SPECS/pal.spec <<SPEC
@@ -110,3 +116,72 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: "*.rpm"
+
+  homebrew:
+    name: Update Homebrew Tap
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download darwin tarballs from release
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          for ARCH in amd64 arm64; do
+            curl -fsSL \
+              "https://github.com/binRick/pal/releases/download/${TAG}/pal-darwin-${ARCH}.tar.gz" \
+              -o "pal-darwin-${ARCH}.tar.gz"
+          done
+
+      - name: Compute SHA256s
+        run: |
+          echo "SHA256_AMD64=$(sha256sum pal-darwin-amd64.tar.gz | cut -d' ' -f1)" >> "$GITHUB_ENV"
+          echo "SHA256_ARM64=$(sha256sum pal-darwin-arm64.tar.gz | cut -d' ' -f1)" >> "$GITHUB_ENV"
+
+      - name: Checkout homebrew-tap
+        uses: actions/checkout@v4
+        with:
+          repository: binRick/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+
+      - name: Write formula
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          TAG="${GITHUB_REF_NAME}"
+          mkdir -p tap/Formula
+          cat > tap/Formula/pal.rb <<RUBY
+          class Pal < Formula
+            desc "Terminal palette switcher — list, preview, and apply colour palettes"
+            homepage "https://github.com/binRick/pal"
+            version "${VERSION}"
+            license "MIT"
+
+            on_macos do
+              on_arm do
+                url "https://github.com/binRick/pal/releases/download/${TAG}/pal-darwin-arm64.tar.gz"
+                sha256 "${SHA256_ARM64}"
+              end
+              on_intel do
+                url "https://github.com/binRick/pal/releases/download/${TAG}/pal-darwin-amd64.tar.gz"
+                sha256 "${SHA256_AMD64}"
+              end
+            end
+
+            def install
+              bin.install "pal"
+            end
+
+            test do
+              assert_match "palette", shell_output("#{bin}/pal list 2>&1", 0)
+            end
+          end
+          RUBY
+
+      - name: Commit and push formula
+        run: |
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/pal.rb
+          git diff --cached --quiet || git commit -m "pal: update to ${GITHUB_REF_NAME}"
+          git push
