@@ -233,7 +233,6 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		apply(p)
 		preview(p)
 
 	case "export", "shell", "bashrc":
