@@ -201,10 +201,7 @@ func main() {
 	args := os.Args[1:]
 
 	if len(args) == 0 {
-		names := listPalettes()
-		for _, n := range names {
-			fmt.Println(n)
-		}
+		usage()
 		return
 	}
 
