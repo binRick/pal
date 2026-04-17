@@ -57,6 +57,7 @@ jobs:
 
   rpm:
     name: RHEL9 RPM
+    needs: build
     runs-on: ubuntu-latest
     container:
       image: almalinux:9
@@ -94,7 +95,7 @@ jobs:
           colour palettes to your terminal emulator from the command line.
 
           %install
-          install -Dm755 %{_builddir}/../pal %{buildroot}/usr/local/bin/pal
+          install -Dm755 %{_builddir}/pal %{buildroot}/usr/local/bin/pal
 
           %files
           /usr/local/bin/pal
