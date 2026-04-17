@@ -47,3 +47,66 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: true
+
+  rpm:
+    name: RHEL9 RPM
+    runs-on: ubuntu-latest
+    container:
+      image: almalinux:9
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          dnf install -y golang rpm-build rpmdevtools
+
+      - name: Build binary (native linux/amd64)
+        run: |
+          CGO_ENABLED=0 go build \
+            -trimpath \
+            -ldflags="-s -w -extldflags=-static" \
+            -o pal .
+
+      - name: Write RPM spec
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          rpmdev-setuptree
+          install -Dm755 pal %{_builddir}/pal 2>/dev/null || true
+          mkdir -p ~/rpmbuild/SOURCES ~/rpmbuild/BUILD
+
+          cat > ~/rpmbuild/SPECS/pal.spec <<SPEC
+          Name:           pal
+          Version:        ${VERSION}
+          Release:        1%{?dist}
+          Summary:        Terminal palette switcher
+          License:        MIT
+          BuildArch:      x86_64
+
+          %description
+          pal is a terminal palette switcher. List, preview, and apply
+          colour palettes to your terminal emulator from the command line.
+
+          %install
+          install -Dm755 %{_builddir}/../pal %{buildroot}/usr/local/bin/pal
+
+          %files
+          /usr/local/bin/pal
+
+          %changelog
+          * $(date "+%a %b %d %Y") GitHub Actions <actions@github.com> - ${VERSION}-1
+          - Release ${VERSION}
+          SPEC
+
+          cp pal ~/rpmbuild/BUILD/
+
+      - name: Build RPM
+        run: |
+          rpmbuild -bb ~/rpmbuild/SPECS/pal.spec
+          find ~/rpmbuild/RPMS -name '*.rpm' -exec cp {} . \;
+          ls -lh *.rpm
+
+      - name: Upload RPM to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "*.rpm"
