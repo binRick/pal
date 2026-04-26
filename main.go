@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"math/rand"
 	"os"
+	"os/exec"
 	"sort"
 	"strings"
 )
@@ -131,23 +132,73 @@ func export(p *Palette) {
 	fmt.Printf("printf '%s'\n", strings.Join(seqs, ""))
 }
 
+// inTmux reports whether we're running inside a tmux session. Set by
+// tmux itself for every child process; absent on every other path.
+func inTmux() bool { return os.Getenv("TMUX") != "" }
+
+// wrapForTmux wraps an OSC escape so it punches through tmux's parser
+// and reaches the outer terminal. Tmux normally interprets OSC
+// sequences (e.g. OSC 4 for palette) and applies them only to its own
+// internal state — without the wrapper they never reach rbterm /
+// alacritty / iTerm2 underneath, so the outer terminal's palette and
+// the tmux palette drift out of sync. The DCS-tmux passthrough format
+// is `\ePtmux;<inner-with-each-ESC-doubled>\e\\`. Tmux strips the
+// wrapper and forwards the inner sequence verbatim. Requires the
+// `allow-passthrough on` server option (which we enable below).
+func wrapForTmux(seq string) string {
+	doubled := strings.ReplaceAll(seq, "\033", "\033\033")
+	return "\033Ptmux;" + doubled + "\033\\"
+}
+
+// enableTmuxPassthrough turns on tmux's allow-passthrough server
+// option so DCS-tmux passthrough sequences are honoured. Idempotent:
+// if it's already on this is a no-op. Silently failing is fine — the
+// next-best path is for the user to set it manually (or not, in
+// which case the visible bug is "pal looks like it didn't change
+// the palette inside tmux", which is the bug we're already trying
+// to fix).
+func enableTmuxPassthrough() {
+	if !inTmux() {
+		return
+	}
+	cmd := exec.Command("tmux", "set", "-gqs", "allow-passthrough", "on")
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	_ = cmd.Run()
+}
+
 // apply writes OSC escape sequences to the terminal to set the palette.
 // These work in xterm, VTE-based terminals, iTerm2, Kitty, and most modern terminals.
+// Inside tmux we wrap each escape in DCS-tmux passthrough so the outer
+// terminal sees them too — without that, only tmux's internal palette
+// changes and apps using palette-indexed cells (starship, p10k, etc.)
+// keep rendering with the outer terminal's stale palette.
 func apply(p *Palette) {
 	w := os.Stdout
+	tmuxed := inTmux()
+	if tmuxed {
+		enableTmuxPassthrough()
+	}
+	emit := func(seq string) {
+		if tmuxed {
+			fmt.Fprint(w, wrapForTmux(seq))
+		} else {
+			fmt.Fprint(w, seq)
+		}
+	}
 	for i, c := range p.Colors {
 		if c != "" {
-			fmt.Fprintf(w, "\033]4;%d;#%s\033\\", i, strings.ToUpper(c))
+			emit(fmt.Sprintf("\033]4;%d;#%s\033\\", i, strings.ToUpper(c)))
 		}
 	}
 	if p.Foreground != "" {
-		fmt.Fprintf(w, "\033]10;#%s\033\\", strings.ToUpper(p.Foreground))
+		emit(fmt.Sprintf("\033]10;#%s\033\\", strings.ToUpper(p.Foreground)))
 	}
 	if p.Background != "" {
-		fmt.Fprintf(w, "\033]11;#%s\033\\", strings.ToUpper(p.Background))
+		emit(fmt.Sprintf("\033]11;#%s\033\\", strings.ToUpper(p.Background)))
 	}
 	if p.Cursor != "" {
-		fmt.Fprintf(w, "\033]12;#%s\033\\", strings.ToUpper(p.Cursor))
+		emit(fmt.Sprintf("\033]12;#%s\033\\", strings.ToUpper(p.Cursor)))
 	}
 }
 
