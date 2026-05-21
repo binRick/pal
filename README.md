@@ -205,3 +205,18 @@ Palette data sourced from [binRick/c_palettes](https://github.com/binRick/c_pale
 <div align="center">
 <sub>Built with Go · OSC escape sequences · <code>//go:embed</code></sub>
 </div>
+
+<!-- scc-start -->
+## Code Statistics
+
+| Language | Files | Lines | Blanks | Comments | Code | Complexity |
+|---|---|---|---|---|---|---|
+| SVG | 3 | 323 | 47 | 44 | 232 | 0 |
+| Go | 1 | 329 | 24 | 33 | 272 | 69 |
+| Markdown | 1 | 207 | 63 | 0 | 144 | 0 |
+| Shell | 1 | 24 | 4 | 1 | 19 | 0 |
+| YAML | 1 | 188 | 29 | 1 | 158 | 0 |
+| **Total** | **7** | **1,071** | **167** | **79** | **825** | **69** |
+
+*Generated with [scc](https://github.com/boyter/scc) on 2026-05-20*
+<!-- scc-end -->
