@@ -209,19 +209,29 @@ Palette data sourced from [binRick/c_palettes](https://github.com/binRick/c_pale
 <!-- scc-start -->
 ## Code Statistics
 
+```mermaid
+pie showData
+    title Code by language
+    "Go" : 272
+    "SVG" : 232
+    "Markdown" : 165
+    "YAML" : 158
+    "Other" : 19
+```
+
 | Language | Files | Lines | Blanks | Comments | Code | Complexity |
 |---|---|---|---|---|---|---|
 | SVG | 3 | 323 | 47 | 44 | 232 | 0 |
-| Markdown | 2 | 228 | 67 | 0 | 161 | 0 |
+| Markdown | 2 | 233 | 68 | 0 | 165 | 0 |
 | Go | 1 | 329 | 24 | 33 | 272 | 69 |
 | Shell | 1 | 24 | 4 | 1 | 19 | 0 |
 | YAML | 1 | 188 | 29 | 1 | 158 | 0 |
-| **Total** | **8** | **1,092** | **171** | **79** | **842** | **69** |
+| **Total** | **8** | **1,097** | **172** | **79** | **846** | **69** |
 
-- **Estimated Cost to Develop (organic):** $22,551
+- **Estimated Cost to Develop (organic):** $22,663
 - **Estimated Schedule Effort (organic):** 3.26 months
 - **Estimated People Required (organic):** 0.62
-- **Processed:** 40,781 bytes (0.041 megabytes)
+- **Processed:** 40,984 bytes (0.041 megabytes)
 
-*Generated with [scc](https://github.com/boyter/scc) on 2026-05-22*
+*Generated with [scc](https://github.com/boyter/scc) on 2026-09-09*
 <!-- scc-end -->
