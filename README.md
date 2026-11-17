@@ -34,6 +34,12 @@
 
 ## 🖥️ Demo
 
+<div align="center">
+<a href="https://youtu.be/RFhNgTXXlZ8"><img src="docs/video.png" alt="Watch the pal demo video on YouTube" width="800"/></a>
+
+▶️ **[Watch the two-minute demo on YouTube](https://youtu.be/RFhNgTXXlZ8)**
+</div>
+
 ### Switch palettes — instantly, with typo suggestions and a way back
 
 <div align="center">
@@ -262,6 +268,7 @@ pal/
 ├── docs/
 │   ├── banner.svg       Hero banner
 │   ├── *.gif            Demo recordings (switch, browse, save)
+│   ├── video.png        Poster for the YouTube demo
 │   └── palettes.svg     Palette showcase grid
 └── palettes/
     ├── paleta/          169 paleta-format themes
@@ -287,7 +294,7 @@ Palette data sourced from [binRick/c_palettes](https://github.com/binRick/c_pale
 pie showData
     title Code by language
     "Go" : 1515
-    "Markdown" : 238
+    "Markdown" : 243
     "YAML" : 185
     "SVG" : 159
     "Other" : 36
@@ -296,17 +303,17 @@ pie showData
 | Language | Files | Lines | Blanks | Comments | Code | Complexity |
 |---|---|---|---|---|---|---|
 | Go | 6 | 1,765 | 125 | 125 | 1,515 | 448 |
-| Markdown | 2 | 326 | 88 | 0 | 238 | 0 |
+| Markdown | 2 | 333 | 90 | 0 | 243 | 0 |
 | SVG | 2 | 213 | 26 | 28 | 159 | 0 |
 | YAML | 2 | 224 | 38 | 1 | 185 | 0 |
 | License | 1 | 21 | 4 | 0 | 17 | 0 |
 | Shell | 1 | 24 | 4 | 1 | 19 | 0 |
-| **Total** | **14** | **2,573** | **285** | **155** | **2,133** | **448** |
+| **Total** | **14** | **2,580** | **287** | **155** | **2,138** | **448** |
 
-- **Estimated Cost to Develop (organic):** $59,846
+- **Estimated Cost to Develop (organic):** $59,993
 - **Estimated Schedule Effort (organic):** 4.72 months
 - **Estimated People Required (organic):** 1.13
-- **Processed:** 83,220 bytes (0.083 megabytes)
+- **Processed:** 83,516 bytes (0.084 megabytes)
 
 *Generated with [scc](https://github.com/boyter/scc) on 2026-11-17*
 <!-- scc-end -->
