@@ -34,8 +34,22 @@
 
 ## 🖥️ Demo
 
+### Switch palettes — instantly, with typo suggestions and a way back
+
 <div align="center">
-<img src="docs/demo.svg" alt="pal terminal demo" width="720"/>
+<img src="docs/switch.gif" alt="Switching palettes with pal, pal random and pal reset" width="800"/>
+</div>
+
+### Browse — search, swatches, and a preview that doesn't touch your terminal
+
+<div align="center">
+<img src="docs/browse.gif" alt="pal list with filters and swatches, and pal preview" width="800"/>
+</div>
+
+### Save — keep the current palette for every new shell
+
+<div align="center">
+<img src="docs/save.gif" alt="pal save writing the current palette into the shell config" width="800"/>
 </div>
 
 ---
@@ -247,7 +261,7 @@ pal/
 ├── build.sh             Docker static build script
 ├── docs/
 │   ├── banner.svg       Hero banner
-│   ├── demo.svg         Terminal demo screenshot
+│   ├── *.gif            Demo recordings (switch, browse, save)
 │   └── palettes.svg     Palette showcase grid
 └── palettes/
     ├── paleta/          169 paleta-format themes
@@ -273,26 +287,26 @@ Palette data sourced from [binRick/c_palettes](https://github.com/binRick/c_pale
 pie showData
     title Code by language
     "Go" : 1515
-    "SVG" : 232
-    "Markdown" : 229
+    "Markdown" : 238
     "YAML" : 185
+    "SVG" : 159
     "Other" : 36
 ```
 
 | Language | Files | Lines | Blanks | Comments | Code | Complexity |
 |---|---|---|---|---|---|---|
 | Go | 6 | 1,765 | 125 | 125 | 1,515 | 448 |
-| SVG | 3 | 323 | 47 | 44 | 232 | 0 |
-| Markdown | 2 | 312 | 83 | 0 | 229 | 0 |
+| Markdown | 2 | 326 | 88 | 0 | 238 | 0 |
+| SVG | 2 | 213 | 26 | 28 | 159 | 0 |
 | YAML | 2 | 224 | 38 | 1 | 185 | 0 |
 | License | 1 | 21 | 4 | 0 | 17 | 0 |
 | Shell | 1 | 24 | 4 | 1 | 19 | 0 |
-| **Total** | **15** | **2,669** | **301** | **171** | **2,197** | **448** |
+| **Total** | **14** | **2,573** | **285** | **155** | **2,133** | **448** |
 
-- **Estimated Cost to Develop (organic):** $61,732
-- **Estimated Schedule Effort (organic):** 4.77 months
-- **Estimated People Required (organic):** 1.15
-- **Processed:** 88,364 bytes (0.088 megabytes)
+- **Estimated Cost to Develop (organic):** $59,846
+- **Estimated Schedule Effort (organic):** 4.72 months
+- **Estimated People Required (organic):** 1.13
+- **Processed:** 83,220 bytes (0.083 megabytes)
 
 *Generated with [scc](https://github.com/boyter/scc) on 2026-11-17*
 <!-- scc-end -->
