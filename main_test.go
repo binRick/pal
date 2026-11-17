@@ -599,3 +599,48 @@ func TestSaveUnknownPaletteLeavesConfigAlone(t *testing.T) {
 		t.Error(".zshrc was created for an unknown palette")
 	}
 }
+
+func TestSaveWithoutNameSavesTheLastAppliedPalette(t *testing.T) {
+	for _, apply := range [][]string{{"set", "nord"}, {"nord"}, {"random", "nord", "--dark", "ord"}} {
+		h, home := saveHarness(t, "/bin/zsh")
+		h.app.run(apply)
+		if apply[0] == "random" && !strings.Contains(h.stderr.String(), "Applied: nord\n") {
+			continue // the draw picked base16-nord; nothing to compare against
+		}
+		h.term.Reset()
+		if code := h.app.run([]string{"save"}); code != 0 {
+			t.Fatalf("after %v: exit %d, stderr %q", apply, code, h.stderr.String())
+		}
+		if got := runRC(t, home+"/.zshrc"); got != nordOSC {
+			t.Errorf("after %v: a new shell would emit %q", apply, got)
+		}
+	}
+}
+
+func TestSaveWithoutNameNeedsACurrentPalette(t *testing.T) {
+	h, home := saveHarness(t, "/bin/zsh")
+	if code := h.app.run([]string{"save"}); code == 0 {
+		t.Error("exit 0 although no palette was ever applied")
+	}
+	if _, err := os.Stat(home + "/.zshrc"); err == nil {
+		t.Error(".zshrc was written with nothing to save")
+	}
+}
+
+func TestResetForgetsTheCurrentPalette(t *testing.T) {
+	h, _ := saveHarness(t, "/bin/zsh")
+	h.app.run([]string{"set", "nord"})
+	h.app.run([]string{"reset"})
+	if code := h.app.run([]string{"save"}); code == 0 {
+		t.Error("save succeeded after reset; there is no pal theme to save")
+	}
+}
+
+func TestCurrentPaletteHonoursXDGStateHome(t *testing.T) {
+	h, home := saveHarness(t, "/bin/zsh")
+	h.env["XDG_STATE_HOME"] = home + "/state"
+	h.app.run([]string{"set", "nord"})
+	if got := strings.TrimSpace(readFile(t, home+"/state/pal/current")); got != "nord" {
+		t.Errorf("state file holds %q, want nord", got)
+	}
+}

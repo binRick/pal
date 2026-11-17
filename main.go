@@ -52,7 +52,7 @@ func (a *app) usage() {
 		{"pal set", "<name>", "🖌 ", "apply a palette to the current terminal"},
 		{"pal preview", "<name>", "👁 ", "show a palette's colors without applying it"},
 		{"pal random", "[filter]", "🎲", "apply a random palette"},
-		{"pal save", "<name>", "💾", "apply, and keep it for new shells (writes ~/.zshrc or ~/.bashrc)"},
+		{"pal save", "[name]", "💾", "keep the current (or named) palette for new shells (~/.zshrc, ~/.bashrc)"},
 		{"pal reset", "", "🧹", "restore the terminal's own colors"},
 		{"pal export", "<name>", "📄", "print shell code to embed in .bashrc (no pal needed)"},
 		{"pal", "<name>", "⚡", `shorthand for "pal set <name>"`},
@@ -93,6 +93,13 @@ func (a *app) run(args []string) int {
 		return a.apply(p)
 
 	case "save":
+		if len(rest) == 0 {
+			name := a.current()
+			if name == "" {
+				return a.fail(fmt.Errorf("no current palette to save: apply one first, or run pal save <name>"))
+			}
+			rest = []string{name}
+		}
 		p := a.named("save", rest)
 		if p == nil {
 			return 1
@@ -122,6 +129,7 @@ func (a *app) run(args []string) int {
 		if err := a.send(resetSequences); err != nil {
 			return a.fail(err)
 		}
+		a.remember("")
 
 	case "-h", "--help", "help":
 		a.usage()
@@ -176,6 +184,7 @@ func (a *app) apply(p *Palette) int {
 	if err := a.send(p.sequences()); err != nil {
 		return a.fail(err)
 	}
+	a.remember(p.Name)
 	return 0
 }
 

@@ -78,7 +78,7 @@ pal list [filter]        📋 list palettes (-v adds color swatches)
 pal set <name>           🖌  apply a palette to the current terminal
 pal preview <name>       👁  show a palette's colors without applying it
 pal random [filter]      🎲 apply a random palette
-pal save <name>          💾 apply, and keep it for new shells (writes ~/.zshrc or ~/.bashrc)
+pal save [name]          💾 keep the current (or named) palette for new shells (~/.zshrc, ~/.bashrc)
 pal reset                🧹 restore the terminal's own colors
 pal export <name>        📄 print shell code to apply the palette (for .bashrc)
 pal <name>               ⚡ shorthand for "pal set <name>"
@@ -107,7 +107,10 @@ pal list -v base16 ocean     # with color swatches
 # Random theme, dark backgrounds only
 pal random --dark
 
-# Keep a theme: applies it now and for every new shell
+# Keep the theme you have on now for every new shell
+pal save
+
+# ...or apply and keep a named one
 pal save nord
 
 # Back to your terminal's own colors
@@ -127,7 +130,8 @@ pal set "$(pal list | fzf --preview 'pal preview {}')"
 
 ## 💾 Save
 
-`pal save <name>` applies the palette and writes it into the startup file of the
+`pal save` keeps the palette you last applied (pal remembers its name in
+`~/.local/state/pal/current`); `pal save <name>` applies that one first. Either way it is written into the startup file of the
 shell you ran it from — `~/.zshrc` (or `$ZDOTDIR/.zshrc`) for zsh, `~/.bashrc` for bash.
 The code lives in a marked block, so saving again replaces the previous theme
 instead of piling up, and the rest of the file is left alone:
@@ -268,27 +272,27 @@ Palette data sourced from [binRick/c_palettes](https://github.com/binRick/c_pale
 ```mermaid
 pie showData
     title Code by language
-    "Go" : 1435
+    "Go" : 1515
     "SVG" : 232
-    "Markdown" : 226
+    "Markdown" : 229
     "YAML" : 185
     "Other" : 36
 ```
 
 | Language | Files | Lines | Blanks | Comments | Code | Complexity |
 |---|---|---|---|---|---|---|
-| Go | 6 | 1,673 | 118 | 120 | 1,435 | 416 |
+| Go | 6 | 1,765 | 125 | 125 | 1,515 | 448 |
 | SVG | 3 | 323 | 47 | 44 | 232 | 0 |
-| Markdown | 2 | 308 | 82 | 0 | 226 | 0 |
+| Markdown | 2 | 312 | 83 | 0 | 229 | 0 |
 | YAML | 2 | 224 | 38 | 1 | 185 | 0 |
 | License | 1 | 21 | 4 | 0 | 17 | 0 |
 | Shell | 1 | 24 | 4 | 1 | 19 | 0 |
-| **Total** | **15** | **2,573** | **293** | **166** | **2,114** | **416** |
+| **Total** | **15** | **2,669** | **301** | **171** | **2,197** | **448** |
 
-- **Estimated Cost to Develop (organic):** $59,286
-- **Estimated Schedule Effort (organic):** 4.70 months
-- **Estimated People Required (organic):** 1.12
-- **Processed:** 85,349 bytes (0.085 megabytes)
+- **Estimated Cost to Develop (organic):** $61,732
+- **Estimated Schedule Effort (organic):** 4.77 months
+- **Estimated People Required (organic):** 1.15
+- **Processed:** 88,364 bytes (0.088 megabytes)
 
 *Generated with [scc](https://github.com/boyter/scc) on 2026-11-17*
 <!-- scc-end -->

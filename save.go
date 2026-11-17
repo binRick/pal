@@ -96,3 +96,41 @@ func (a *app) save(p *Palette) int {
 	fmt.Fprintf(a.stderr, "Saved %s to %s\n", p.Name, path)
 	return 0
 }
+
+// statePath is where the name of the last applied palette is kept, so
+// `pal save` knows what "current" means. Empty when there is no home.
+func (a *app) statePath() string {
+	if dir := a.getenv("XDG_STATE_HOME"); dir != "" {
+		return filepath.Join(dir, "pal", "current")
+	}
+	if home := a.getenv("HOME"); home != "" {
+		return filepath.Join(home, ".local", "state", "pal", "current")
+	}
+	return ""
+}
+
+// remember records name as the current palette ("" forgets it). Best
+// effort: applying a palette must not fail over a state file.
+func (a *app) remember(name string) {
+	path := a.statePath()
+	if path == "" {
+		return
+	}
+	if name == "" {
+		os.Remove(path)
+		return
+	}
+	if os.MkdirAll(filepath.Dir(path), 0o755) == nil {
+		os.WriteFile(path, []byte(name+"\n"), 0o644)
+	}
+}
+
+// current returns the last applied palette, or "" if none is known.
+func (a *app) current() string {
+	path := a.statePath()
+	if path == "" {
+		return ""
+	}
+	b, _ := os.ReadFile(path)
+	return strings.TrimSpace(string(b))
+}
