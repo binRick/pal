@@ -23,6 +23,7 @@
 - 📦 **Self-contained** — all palette data compiled in via `//go:embed`, nothing to install separately
 - 🖥️ **Cross-terminal** — works in xterm, VTE, iTerm2, Kitty, Alacritty, WezTerm, and more
 - 🔎 **Search & filter** — `pal list gruvbox --light`, with color swatches via `-v`
+- 🎯 **Interactive picker** — `pal pick` re-themes your terminal live as you move through the list
 - 👁 **True preview** — see any palette in its own colors without changing yours
 - 🎲 **Random mode** — explore palettes with `pal random`, optionally `--dark` / `--light`
 - 💾 **Save** — `pal save <name>` keeps a theme for every new shell
@@ -44,6 +45,12 @@
 
 <div align="center">
 <img src="docs/switch.gif" alt="Switching palettes with pal, pal random and pal reset" width="800"/>
+</div>
+
+### Pick — move through the list and watch your terminal change
+
+<div align="center">
+<img src="docs/pick.gif" alt="pal pick: an interactive picker with live preview" width="800"/>
 </div>
 
 ### Browse — search, swatches, and a preview that doesn't touch your terminal
@@ -113,6 +120,7 @@ sudo mv pal /usr/local/bin/
 pal list [filter]        📋 list palettes (-v adds color swatches)
 pal set <name>           🖌  apply a palette to the current terminal
 pal preview <name>       👁  show a palette's colors without applying it
+pal pick [filter]        🎯 choose interactively, with live preview
 pal random [filter]      🎲 apply a random palette
 pal save [name]          💾 keep the current (or named) palette for new shells (~/.zshrc, ~/.bashrc)
 pal reset                🧹 restore the terminal's own colors
@@ -140,6 +148,10 @@ pal list gruvbox             # names containing "gruvbox"
 pal list --light             # light backgrounds only
 pal list -v base16 ocean     # with color swatches
 
+# Pick interactively: arrows move, typing filters, Enter keeps, Esc puts things back
+pal pick
+pal pick --light
+
 # Random theme, dark backgrounds only
 pal random --dark
 
@@ -154,12 +166,6 @@ pal reset
 
 # Export to .bashrc — no pal binary needed at shell startup
 pal export dracula-dark >> ~/.bashrc
-```
-
-With [fzf](https://github.com/junegunn/fzf) installed you get a picker for free:
-
-```bash
-pal set "$(pal list | fzf --preview 'pal preview {}')"
 ```
 
 ---
@@ -244,6 +250,8 @@ These sequences are interpreted live by your terminal. **No restart required** �
   recolors the terminal from scripts, hooks and `$(...)`.
 - Inside tmux each sequence is wrapped in DCS passthrough (and `allow-passthrough` is
   switched on) so it reaches the outer terminal.
+- `pal pick` asks the terminal for its current colors first (OSC `?` queries), so Esc can put
+  them back exactly; it reads keys through `stty`, so it needs macOS or Linux.
 - `pal preview` and `pal list -v` paint with 24-bit color when `$COLORTERM` announces
   it, and fall back to the nearest of the 256 xterm colors otherwise.
 
@@ -278,6 +286,7 @@ pal/
 ├── palette.go           embedded palettes — parse, validate, search, suggest
 ├── term.go              terminal output — OSC sequences, tmux, preview, export
 ├── save.go              `pal save` — write a theme into the shell's rc file
+├── pick.go              `pal pick` — the interactive picker
 ├── *_test.go            tests (every embedded palette is checked)
 ├── go.mod               module: github.com/binRick/pal
 ├── install.sh           One-line installer (macOS, Linux, Git Bash)
@@ -285,7 +294,7 @@ pal/
 ├── build.sh             Docker static build script
 ├── docs/
 │   ├── banner.svg       Hero banner
-│   ├── *.gif            Demo recordings (switch, browse, save)
+│   ├── *.gif            Demo recordings (switch, pick, browse, save)
 │   ├── video.png        Poster for the YouTube demo
 │   └── palettes.svg     Palette showcase grid
 └── palettes/
@@ -311,8 +320,8 @@ Palette data sourced from [binRick/c_palettes](https://github.com/binRick/c_pale
 ```mermaid
 pie showData
     title Code by language
-    "Go" : 1515
-    "Markdown" : 257
+    "Go" : 2016
+    "Markdown" : 267
     "YAML" : 191
     "SVG" : 159
     "Shell" : 89
@@ -321,19 +330,19 @@ pie showData
 
 | Language | Files | Lines | Blanks | Comments | Code | Complexity |
 |---|---|---|---|---|---|---|
-| Go | 6 | 1,765 | 125 | 125 | 1,515 | 448 |
-| Markdown | 2 | 351 | 94 | 0 | 257 | 0 |
+| Go | 8 | 2,339 | 160 | 163 | 2,016 | 623 |
+| Markdown | 2 | 362 | 95 | 0 | 267 | 0 |
 | SVG | 2 | 213 | 26 | 28 | 159 | 0 |
 | Shell | 2 | 117 | 17 | 11 | 89 | 15 |
 | YAML | 2 | 232 | 39 | 2 | 191 | 0 |
 | License | 1 | 21 | 4 | 0 | 17 | 0 |
 | Powershell | 1 | 43 | 5 | 7 | 31 | 19 |
-| **Total** | **16** | **2,742** | **310** | **173** | **2,259** | **482** |
+| **Total** | **18** | **3,327** | **346** | **211** | **2,770** | **657** |
 
-- **Estimated Cost to Develop (organic):** $63,563
-- **Estimated Schedule Effort (organic):** 4.83 months
-- **Estimated People Required (organic):** 1.17
-- **Processed:** 89,790 bytes (0.090 megabytes)
+- **Estimated Cost to Develop (organic):** $78,740
+- **Estimated Schedule Effort (organic):** 5.24 months
+- **Estimated People Required (organic):** 1.34
+- **Processed:** 107,191 bytes (0.107 megabytes)
 
 *Generated with [scc](https://github.com/boyter/scc) on 2026-11-17*
 <!-- scc-end -->

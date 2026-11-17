@@ -51,6 +51,7 @@ func (a *app) usage() {
 		{"pal list", "[filter]", "📋", "list palettes (-v adds color swatches)"},
 		{"pal set", "<name>", "🖌 ", "apply a palette to the current terminal"},
 		{"pal preview", "<name>", "👁 ", "show a palette's colors without applying it"},
+		{"pal pick", "[filter]", "🎯", "choose interactively, with live preview"},
 		{"pal random", "[filter]", "🎲", "apply a random palette"},
 		{"pal save", "[name]", "💾", "keep the current (or named) palette for new shells (~/.zshrc, ~/.bashrc)"},
 		{"pal reset", "", "🧹", "restore the terminal's own colors"},
@@ -121,6 +122,9 @@ func (a *app) run(args []string) int {
 			return 1
 		}
 		fmt.Fprint(a.stdout, exportSnippet(p))
+
+	case "pick", "choose", "i":
+		return a.pickTTY(rest)
 
 	case "random", "rand", "r":
 		return a.random(rest)
