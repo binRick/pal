@@ -48,6 +48,8 @@ jobs:
             mv "$BINARY" "$OUT" 2>/dev/null || true
             echo "Built: $OUT ($(du -sh "$OUT" | cut -f1))"
           done
+          # Checksums for install.sh / install.ps1 to verify downloads against
+          (cd dist && sha256sum pal-* > checksums.txt)
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

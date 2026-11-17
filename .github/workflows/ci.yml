@@ -29,6 +29,12 @@ jobs:
       - name: Test
         run: go test ./...
 
+      - name: Installer
+        run: |
+          sh -n install.sh
+          PAL_INSTALL_DIR="$RUNNER_TEMP/pal-bin" sh install.sh
+          "$RUNNER_TEMP/pal-bin/pal" list | grep -qx nord
+
       - name: Cross-compile
         run: |
           for target in linux/arm64 darwin/arm64 windows/amd64; do

@@ -70,6 +70,22 @@
 
 ## 📦 Install
 
+### One-line install (macOS, Linux, Windows)
+
+macOS, Linux, and Git Bash / WSL on Windows:
+```bash
+curl -fsSL https://raw.githubusercontent.com/binRick/pal/main/install.sh | sh
+```
+
+Windows PowerShell:
+```powershell
+irm https://raw.githubusercontent.com/binRick/pal/main/install.ps1 | iex
+```
+
+The script downloads the release binary for your system (Intel or ARM) into `~/.local/bin`
+(`%LOCALAPPDATA%\pal` on Windows) and verifies its checksum when the release publishes one.
+Set `PAL_VERSION=v0.2.1` to pin a release, or `PAL_INSTALL_DIR` to install elsewhere.
+
 ### Homebrew (macOS)
 ```bash
 brew install binRick/tap/pal
@@ -264,6 +280,8 @@ pal/
 ├── save.go              `pal save` — write a theme into the shell's rc file
 ├── *_test.go            tests (every embedded palette is checked)
 ├── go.mod               module: github.com/binRick/pal
+├── install.sh           One-line installer (macOS, Linux, Git Bash)
+├── install.ps1          One-line installer (Windows PowerShell)
 ├── build.sh             Docker static build script
 ├── docs/
 │   ├── banner.svg       Hero banner
@@ -294,26 +312,28 @@ Palette data sourced from [binRick/c_palettes](https://github.com/binRick/c_pale
 pie showData
     title Code by language
     "Go" : 1515
-    "Markdown" : 243
-    "YAML" : 185
+    "Markdown" : 257
+    "YAML" : 191
     "SVG" : 159
-    "Other" : 36
+    "Shell" : 89
+    "Other" : 48
 ```
 
 | Language | Files | Lines | Blanks | Comments | Code | Complexity |
 |---|---|---|---|---|---|---|
 | Go | 6 | 1,765 | 125 | 125 | 1,515 | 448 |
-| Markdown | 2 | 333 | 90 | 0 | 243 | 0 |
+| Markdown | 2 | 351 | 94 | 0 | 257 | 0 |
 | SVG | 2 | 213 | 26 | 28 | 159 | 0 |
-| YAML | 2 | 224 | 38 | 1 | 185 | 0 |
+| Shell | 2 | 117 | 17 | 11 | 89 | 15 |
+| YAML | 2 | 232 | 39 | 2 | 191 | 0 |
 | License | 1 | 21 | 4 | 0 | 17 | 0 |
-| Shell | 1 | 24 | 4 | 1 | 19 | 0 |
-| **Total** | **14** | **2,580** | **287** | **155** | **2,138** | **448** |
+| Powershell | 1 | 43 | 5 | 7 | 31 | 19 |
+| **Total** | **16** | **2,742** | **310** | **173** | **2,259** | **482** |
 
-- **Estimated Cost to Develop (organic):** $59,993
-- **Estimated Schedule Effort (organic):** 4.72 months
-- **Estimated People Required (organic):** 1.13
-- **Processed:** 83,516 bytes (0.084 megabytes)
+- **Estimated Cost to Develop (organic):** $63,563
+- **Estimated Schedule Effort (organic):** 4.83 months
+- **Estimated People Required (organic):** 1.17
+- **Processed:** 89,790 bytes (0.090 megabytes)
 
 *Generated with [scc](https://github.com/boyter/scc) on 2026-11-17*
 <!-- scc-end -->
