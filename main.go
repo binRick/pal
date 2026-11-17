@@ -1,329 +1,261 @@
 package main
 
 import (
-	"embed"
+	"bufio"
 	"fmt"
-	"io/fs"
+	"io"
 	"math/rand"
 	"os"
-	"os/exec"
-	"sort"
 	"strings"
 )
-
-//go:embed palettes
-var paletteFS embed.FS
-
-type Palette struct {
-	Name       string
-	Format     string
-	Foreground string
-	Background string
-	Cursor     string
-	Colors     [16]string
-}
-
-// parsePaleta parses the 19-line paleta format:
-// line 0: foreground, line 1: background, line 2: cursor
-// lines 3-18: colors 00-15
-func parsePaleta(name, data string) (*Palette, error) {
-	var lines []string
-	for _, l := range strings.Split(strings.TrimSpace(data), "\n") {
-		l = strings.TrimSpace(l)
-		if l != "" {
-			lines = append(lines, l)
-		}
-	}
-	if len(lines) < 19 {
-		return nil, fmt.Errorf("paleta %q: need 19 lines, got %d", name, len(lines))
-	}
-	p := &Palette{Name: name, Format: "paleta"}
-	p.Foreground = lines[0]
-	p.Background = lines[1]
-	p.Cursor = lines[2]
-	for i := 0; i < 16; i++ {
-		p.Colors[i] = lines[3+i]
-	}
-	return p, nil
-}
-
-// parseKFC parses the key=value format:
-// background=rrggbb, foreground=rrggbb, cursor=rrggbb, color00=rrggbb ... color15=rrggbb
-func parseKFC(name, data string) (*Palette, error) {
-	p := &Palette{Name: name, Format: "kfc"}
-	for _, line := range strings.Split(data, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) != 2 {
-			continue
-		}
-		key := strings.TrimSpace(parts[0])
-		val := strings.TrimSpace(parts[1])
-		switch key {
-		case "foreground":
-			p.Foreground = val
-		case "background":
-			p.Background = val
-		case "cursor":
-			p.Cursor = val
-		default:
-			if strings.HasPrefix(key, "color") && len(key) >= 7 {
-				var idx int
-				fmt.Sscanf(key[5:], "%d", &idx)
-				if idx >= 0 && idx < 16 {
-					p.Colors[idx] = val
-				}
-			}
-		}
-	}
-	return p, nil
-}
-
-func loadPalette(name string) (*Palette, error) {
-	if data, err := paletteFS.ReadFile("palettes/paleta/" + name); err == nil {
-		return parsePaleta(name, string(data))
-	}
-	if data, err := paletteFS.ReadFile("palettes/kfc/dark/" + name); err == nil {
-		return parseKFC(name, string(data))
-	}
-	return nil, fmt.Errorf("palette %q not found", name)
-}
-
-func listPalettes() []string {
-	seen := map[string]bool{}
-	var names []string
-	for _, dir := range []string{"palettes/paleta", "palettes/kfc/dark"} {
-		entries, err := fs.ReadDir(paletteFS, dir)
-		if err != nil {
-			continue
-		}
-		for _, e := range entries {
-			if !e.IsDir() && !seen[e.Name()] {
-				names = append(names, e.Name())
-				seen[e.Name()] = true
-			}
-		}
-	}
-	sort.Strings(names)
-	return names
-}
-
-// export prints a shell printf one-liner that applies the palette without needing pal at runtime.
-// Paste the output into ~/.bashrc or ~/.zshrc.
-func export(p *Palette) {
-	var seqs []string
-	for i, c := range p.Colors {
-		if c != "" {
-			seqs = append(seqs, fmt.Sprintf("\\033]4;%d;#%s\\033\\\\", i, strings.ToUpper(c)))
-		}
-	}
-	if p.Foreground != "" {
-		seqs = append(seqs, fmt.Sprintf("\\033]10;#%s\\033\\\\", strings.ToUpper(p.Foreground)))
-	}
-	if p.Background != "" {
-		seqs = append(seqs, fmt.Sprintf("\\033]11;#%s\\033\\\\", strings.ToUpper(p.Background)))
-	}
-	if p.Cursor != "" {
-		seqs = append(seqs, fmt.Sprintf("\\033]12;#%s\\033\\\\", strings.ToUpper(p.Cursor)))
-	}
-	fmt.Printf("printf '%s'\n", strings.Join(seqs, ""))
-}
-
-// inTmux reports whether we're running inside a tmux session. Set by
-// tmux itself for every child process; absent on every other path.
-func inTmux() bool { return os.Getenv("TMUX") != "" }
-
-// wrapForTmux wraps an OSC escape so it punches through tmux's parser
-// and reaches the outer terminal. Tmux normally interprets OSC
-// sequences (e.g. OSC 4 for palette) and applies them only to its own
-// internal state — without the wrapper they never reach rbterm /
-// alacritty / iTerm2 underneath, so the outer terminal's palette and
-// the tmux palette drift out of sync. The DCS-tmux passthrough format
-// is `\ePtmux;<inner-with-each-ESC-doubled>\e\\`. Tmux strips the
-// wrapper and forwards the inner sequence verbatim. Requires the
-// `allow-passthrough on` server option (which we enable below).
-func wrapForTmux(seq string) string {
-	doubled := strings.ReplaceAll(seq, "\033", "\033\033")
-	return "\033Ptmux;" + doubled + "\033\\"
-}
-
-// enableTmuxPassthrough turns on tmux's allow-passthrough server
-// option so DCS-tmux passthrough sequences are honoured. Idempotent:
-// if it's already on this is a no-op. Silently failing is fine — the
-// next-best path is for the user to set it manually (or not, in
-// which case the visible bug is "pal looks like it didn't change
-// the palette inside tmux", which is the bug we're already trying
-// to fix).
-func enableTmuxPassthrough() {
-	if !inTmux() {
-		return
-	}
-	cmd := exec.Command("tmux", "set", "-gqs", "allow-passthrough", "on")
-	cmd.Stdout = nil
-	cmd.Stderr = nil
-	_ = cmd.Run()
-}
-
-// apply writes OSC escape sequences to the terminal to set the palette.
-// These work in xterm, VTE-based terminals, iTerm2, Kitty, and most modern terminals.
-// Inside tmux we wrap each escape in DCS-tmux passthrough so the outer
-// terminal sees them too — without that, only tmux's internal palette
-// changes and apps using palette-indexed cells (starship, p10k, etc.)
-// keep rendering with the outer terminal's stale palette.
-func apply(p *Palette) {
-	w := os.Stdout
-	tmuxed := inTmux()
-	if tmuxed {
-		enableTmuxPassthrough()
-	}
-	emit := func(seq string) {
-		if tmuxed {
-			fmt.Fprint(w, wrapForTmux(seq))
-		} else {
-			fmt.Fprint(w, seq)
-		}
-	}
-	for i, c := range p.Colors {
-		if c != "" {
-			emit(fmt.Sprintf("\033]4;%d;#%s\033\\", i, strings.ToUpper(c)))
-		}
-	}
-	if p.Foreground != "" {
-		emit(fmt.Sprintf("\033]10;#%s\033\\", strings.ToUpper(p.Foreground)))
-	}
-	if p.Background != "" {
-		emit(fmt.Sprintf("\033]11;#%s\033\\", strings.ToUpper(p.Background)))
-	}
-	if p.Cursor != "" {
-		emit(fmt.Sprintf("\033]12;#%s\033\\", strings.ToUpper(p.Cursor)))
-	}
-}
-
-func preview(p *Palette) {
-	fmt.Printf("\n  palette: %s\n\n  ", p.Name)
-	for i := 0; i < 8; i++ {
-		fmt.Printf("\033[48;5;%dm  \033[0m", i)
-	}
-	fmt.Printf("\n  ")
-	for i := 8; i < 16; i++ {
-		fmt.Printf("\033[48;5;%dm  \033[0m", i)
-	}
-	fmt.Printf("\n\n  fg:#%s  bg:#%s  cursor:#%s\n\n",
-		strings.ToUpper(p.Foreground),
-		strings.ToUpper(p.Background),
-		strings.ToUpper(p.Cursor),
-	)
-}
 
 const (
 	reset  = "\033[0m"
 	bold   = "\033[1m"
-	dim    = "\033[2m"
 	cyan   = "\033[36m"
 	yellow = "\033[33m"
-	green  = "\033[32m"
 	purple = "\033[35m"
 	white  = "\033[97m"
 	gray   = "\033[90m"
 )
 
-func usage() {
-	w := os.Stderr
+// app carries everything a command touches, so tests can drive the CLI
+// without a real terminal.
+type app struct {
+	stdout, stderr io.Writer
+	term           io.Writer // where OSC sequences go; nil = found on first use
+	tmux           bool      // wrap sequences in DCS-tmux passthrough
+	truecolor      bool      // terminal announced 24-bit color
+	passthrough    func()    // turns on tmux allow-passthrough
+	getenv         func(string) string
+	parentShell    func() string // name of the process that ran pal
+}
+
+func main() {
+	colorterm := os.Getenv("COLORTERM")
+	a := &app{
+		stdout:      os.Stdout,
+		stderr:      os.Stderr,
+		tmux:        inTmux(),
+		truecolor:   colorterm == "truecolor" || colorterm == "24bit",
+		passthrough: enableTmuxPassthrough,
+		getenv:      os.Getenv,
+		parentShell: parentProcessName,
+	}
+	os.Exit(a.run(os.Args[1:]))
+}
+
+func (a *app) usage() {
+	w := a.stderr
+	rows := []struct{ cmd, arg, icon, desc string }{
+		{"pal list", "[filter]", "📋", "list palettes (-v adds color swatches)"},
+		{"pal set", "<name>", "🖌 ", "apply a palette to the current terminal"},
+		{"pal preview", "<name>", "👁 ", "show a palette's colors without applying it"},
+		{"pal random", "[filter]", "🎲", "apply a random palette"},
+		{"pal save", "<name>", "💾", "apply, and keep it for new shells (writes ~/.zshrc or ~/.bashrc)"},
+		{"pal reset", "", "🧹", "restore the terminal's own colors"},
+		{"pal export", "<name>", "📄", "print shell code to embed in .bashrc (no pal needed)"},
+		{"pal", "<name>", "⚡", `shorthand for "pal set <name>"`},
+	}
 	fmt.Fprintln(w)
 	fmt.Fprintf(w, "  %s%s🎨 pal%s%s — terminal palette switcher%s\n", bold, cyan, reset, gray, reset)
 	fmt.Fprintln(w)
 	fmt.Fprintf(w, "  %s%sUsage%s\n", bold, white, reset)
 	fmt.Fprintln(w)
-	fmt.Fprintf(w, "    %s%spal list%s               %s📋 list all available palettes%s\n", bold, yellow, reset, gray, reset)
-	fmt.Fprintf(w, "    %s%spal set %s%s<name>%s         %s🖌  apply a palette to the current terminal%s\n", bold, yellow, reset, purple, reset, gray, reset)
-	fmt.Fprintf(w, "    %s%spal preview %s%s<name>%s     %s👁  apply and show a color swatch%s\n", bold, yellow, reset, purple, reset, gray, reset)
-	fmt.Fprintf(w, "    %s%spal random%s             %s🎲 apply a random palette%s\n", bold, yellow, reset, gray, reset)
-	fmt.Fprintf(w, "    %s%spal export %s%s<name>%s      %s📄 print shell code to embed in .bashrc (no pal needed)%s\n", bold, yellow, reset, purple, reset, gray, reset)
-	fmt.Fprintf(w, "    %s%spal %s%s<name>%s            %s⚡ shorthand for \"pal set <name>\"%s\n", bold, yellow, reset, purple, reset, gray, reset)
+	for _, r := range rows {
+		pad := strings.Repeat(" ", 24-len(r.cmd)-len(r.arg))
+		fmt.Fprintf(w, "    %s%s%s%s %s%s%s%s%s %s%s%s\n",
+			bold, yellow, r.cmd, reset, purple, r.arg, reset, pad, r.icon, gray, r.desc, reset)
+	}
 	fmt.Fprintln(w)
-	fmt.Fprintf(w, "  %s420 palettes embedded · paleta + kfc/dark formats%s\n", gray, reset)
+	fmt.Fprintf(w, "  %s%sFilter%s  %swords that must appear in the name, and --dark or --light%s\n", bold, white, reset, gray, reset)
+	fmt.Fprintf(w, "          %se.g. pal list gruvbox --light · pal random --dark%s\n", gray, reset)
+	fmt.Fprintln(w)
+	fmt.Fprintf(w, "  %s%d palettes embedded · paleta + kfc/dark formats%s\n", gray, len(listPalettes()), reset)
 	fmt.Fprintln(w)
 }
 
-func main() {
-	args := os.Args[1:]
-
+func (a *app) run(args []string) int {
 	if len(args) == 0 {
-		usage()
-		return
+		a.usage()
+		return 0
 	}
-
-	switch args[0] {
+	cmd, rest := args[0], args[1:]
+	switch cmd {
 	case "list", "ls", "-l", "--list":
-		for _, n := range listPalettes() {
-			fmt.Println(n)
-		}
+		return a.list(rest)
 
 	case "set", "apply":
-		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "usage: pal set <name>")
-			os.Exit(1)
+		p := a.named("set", rest)
+		if p == nil {
+			return 1
 		}
-		p, err := loadPalette(args[1])
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+		return a.apply(p)
+
+	case "save":
+		p := a.named("save", rest)
+		if p == nil {
+			return 1
 		}
-		apply(p)
+		return a.save(p)
 
 	case "preview", "show", "p":
-		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "usage: pal preview <name>")
-			os.Exit(1)
+		p := a.named("preview", rest)
+		if p == nil {
+			return 1
 		}
-		p, err := loadPalette(args[1])
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		preview(p)
+		var b strings.Builder
+		a.preview(&b, p)
+		io.WriteString(a.stdout, b.String())
 
 	case "export", "shell", "bashrc":
-		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "usage: pal export <name>")
-			os.Exit(1)
+		p := a.named("export", rest)
+		if p == nil {
+			return 1
 		}
-		p, err := loadPalette(args[1])
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		export(p)
+		fmt.Fprint(a.stdout, exportSnippet(p))
 
 	case "random", "rand", "r":
-		names := listPalettes()
-		if len(names) == 0 {
-			fmt.Fprintln(os.Stderr, "no palettes found")
-			os.Exit(1)
+		return a.random(rest)
+
+	case "reset":
+		if err := a.send(resetSequences); err != nil {
+			return a.fail(err)
 		}
-		name := names[rand.Intn(len(names))]
-		p, err := loadPalette(name)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		apply(p)
-		fmt.Fprintf(os.Stderr, "Applied: %s\n", name)
 
 	case "-h", "--help", "help":
-		usage()
+		a.usage()
 
 	default:
 		// Try treating the argument as a palette name directly
-		p, err := loadPalette(args[0])
+		p, err := loadPalette(cmd)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "unknown command or palette: %s\n\n", args[0])
-			usage()
-			os.Exit(1)
+			fmt.Fprintf(a.stderr, "unknown command or palette: %s\n", cmd)
+			if !a.didYouMean(cmd) {
+				a.usage()
+			}
+			return 1
 		}
-		apply(p)
+		return a.apply(p)
 	}
+	return 0
+}
+
+func (a *app) fail(err error) int {
+	fmt.Fprintln(a.stderr, err)
+	return 1
+}
+
+// named loads the palette a command was given. On failure it has
+// already told the user why and returns nil.
+func (a *app) named(cmd string, args []string) *Palette {
+	if len(args) == 0 {
+		fmt.Fprintf(a.stderr, "usage: pal %s <name>\n", cmd)
+		return nil
+	}
+	p, err := loadPalette(args[0])
+	if err != nil {
+		fmt.Fprintln(a.stderr, err)
+		a.didYouMean(args[0])
+		return nil
+	}
+	return p
+}
+
+// didYouMean prints palettes close to a mistyped name, if there are any.
+func (a *app) didYouMean(name string) bool {
+	near := suggest(name, listPalettes(), 6)
+	if len(near) == 0 {
+		return false
+	}
+	fmt.Fprintf(a.stderr, "did you mean: %s?\n", strings.Join(near, ", "))
+	return true
+}
+
+func (a *app) apply(p *Palette) int {
+	if err := a.send(p.sequences()); err != nil {
+		return a.fail(err)
+	}
+	return 0
+}
+
+// parseFilter reads a filter from command arguments: --dark, --light,
+// and words to match against names. flags names any further switches
+// the command accepts.
+func parseFilter(args []string, flags map[string]*bool) (filter, error) {
+	var f filter
+	for _, arg := range args {
+		switch {
+		case arg == "--dark":
+			f.dark = true
+		case arg == "--light":
+			f.light = true
+		case flags[arg] != nil:
+			*flags[arg] = true
+		case strings.HasPrefix(arg, "-"):
+			return f, fmt.Errorf("unknown flag: %s", arg)
+		default:
+			f.terms = append(f.terms, arg)
+		}
+	}
+	if f.dark && f.light {
+		return f, fmt.Errorf("--dark and --light exclude each other")
+	}
+	return f, nil
+}
+
+// find returns the palettes a command's filter arguments select; an
+// empty result is an error so scripts can tell.
+func find(args []string, flags map[string]*bool) ([]string, error) {
+	f, err := parseFilter(args, flags)
+	if err != nil {
+		return nil, err
+	}
+	names, err := matching(f)
+	if err != nil {
+		return nil, err
+	}
+	if len(names) == 0 {
+		return nil, fmt.Errorf("no palettes match")
+	}
+	return names, nil
+}
+
+func (a *app) list(args []string) int {
+	swatches := false
+	names, err := find(args, map[string]*bool{"-v": &swatches, "--swatches": &swatches})
+	if err != nil {
+		return a.fail(err)
+	}
+	w := bufio.NewWriter(a.stdout)
+	defer w.Flush()
+	for _, name := range names {
+		if !swatches {
+			fmt.Fprintln(w, name)
+			continue
+		}
+		p, err := loadPalette(name)
+		if err != nil {
+			w.Flush()
+			return a.fail(err)
+		}
+		fmt.Fprintln(w, a.swatchRow(p))
+	}
+	return 0
+}
+
+func (a *app) random(args []string) int {
+	names, err := find(args, nil)
+	if err != nil {
+		return a.fail(err)
+	}
+	p, err := loadPalette(names[rand.Intn(len(names))])
+	if err != nil {
+		return a.fail(err)
+	}
+	if code := a.apply(p); code != 0 {
+		return code
+	}
+	fmt.Fprintf(a.stderr, "Applied: %s\n", p.Name)
+	return 0
 }

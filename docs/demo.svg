@@ -48,7 +48,7 @@
 
   <text x="38" y="160" font-size="12" fill="#f1fa8c" font-weight="bold">pal preview </text>
   <text x="131" y="160" font-size="12" fill="#ff79c6">&lt;name&gt;</text>
-  <text x="183" y="160" font-size="12" fill="#6272a4">     👁  apply and show a color swatch</text>
+  <text x="183" y="160" font-size="12" fill="#6272a4">     👁  show a palette's colors without applying it</text>
 
   <text x="38" y="176" font-size="12" fill="#f1fa8c" font-weight="bold">pal random</text>
   <text x="120" y="176" font-size="12" fill="#6272a4">             🎲 apply a random palette</text>

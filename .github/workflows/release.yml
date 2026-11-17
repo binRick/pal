@@ -173,7 +173,7 @@ jobs:
             end
 
             test do
-              assert_match "palette", shell_output("#{bin}/pal list 2>&1", 0)
+              assert_match "nord", shell_output("#{bin}/pal list")
             end
           end
           RUBY
